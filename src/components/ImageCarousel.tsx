@@ -12,6 +12,7 @@ export function ImageCarousel({ images }: ImageCarouselProps) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStartRef = useRef<number | null>(null);
   const touchStartTimeRef = useRef<number | null>(null);
+  const startTimerRef = useRef<() => void>(() => {});
 
   const handlePrevious = useCallback(() => {
     setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
@@ -36,9 +37,11 @@ export function ImageCarousel({ images }: ImageCarouselProps) {
     clearTimer();
     timerRef.current = setTimeout(() => {
       handleNext();
-      startTimer();
+      startTimerRef.current();
     }, 4000);
   }, [clearTimer, handleNext]);
+
+  startTimerRef.current = startTimer;
 
   const resetTimer = useCallback(() => {
     clearTimer();
