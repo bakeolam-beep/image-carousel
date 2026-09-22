@@ -36,6 +36,7 @@ export function ImageCarousel({ images }: ImageCarouselProps) {
     clearTimer();
     timerRef.current = setTimeout(() => {
       handleNext();
+      startTimer();
     }, 4000);
   }, [clearTimer, handleNext]);
 
@@ -77,6 +78,8 @@ export function ImageCarousel({ images }: ImageCarouselProps) {
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('button')) return;
       touchStartRef.current = e.clientX;
       touchStartTimeRef.current = Date.now();
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -145,16 +148,16 @@ export function ImageCarousel({ images }: ImageCarouselProps) {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onKeyDown={handleKeyDown}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerCancel}
-      data-touch-start-y="0"
-      onPointerDownCapture={(e) => {
-        (e.currentTarget as HTMLElement).dataset.touchStartY = e.clientY.toString();
-      }}
     >
-      <div className="carousel__viewport">
+      <div className="carousel__viewport"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        onPointerDownCapture={(e) => {
+          (e.currentTarget as HTMLElement).dataset.touchStartY = e.clientY.toString();
+        }}
+      >
         <div
           className="carousel__track"
           style={{ transform: `translateX(-${currentIndex * 100}%)` }}
