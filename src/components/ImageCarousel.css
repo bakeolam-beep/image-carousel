@@ -8,6 +8,11 @@
   box-shadow: var(--shadow);
 }
 
+.carousel:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
 .carousel__viewport {
   width: 100%;
   overflow: hidden;

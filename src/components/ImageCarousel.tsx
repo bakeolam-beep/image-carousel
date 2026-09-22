@@ -10,6 +10,8 @@ export function ImageCarousel({ images }: ImageCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartRef = useRef<number | null>(null);
+  const touchStartTimeRef = useRef<number | null>(null);
 
   const handlePrevious = useCallback(() => {
     setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
@@ -37,6 +39,11 @@ export function ImageCarousel({ images }: ImageCarouselProps) {
     }, 4000);
   }, [clearTimer, handleNext]);
 
+  const resetTimer = useCallback(() => {
+    clearTimer();
+    startTimer();
+  }, [clearTimer, startTimer]);
+
   useEffect(() => {
     startTimer();
     return () => clearTimer();
@@ -53,15 +60,100 @@ export function ImageCarousel({ images }: ImageCarouselProps) {
   const handleMouseEnter = () => setIsHovered(true);
   const handleMouseLeave = () => setIsHovered(false);
 
-  const handleControlClick = () => {
-    clearTimer();
-    startTimer();
-  };
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        handlePrevious();
+        resetTimer();
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        handleNext();
+        resetTimer();
+      }
+    },
+    [handlePrevious, handleNext, resetTimer]
+  );
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      touchStartRef.current = e.clientX;
+      touchStartTimeRef.current = Date.now();
+      e.currentTarget.setPointerCapture(e.pointerId);
+    },
+    []
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (touchStartRef.current === null) return;
+
+      const deltaX = e.clientX - touchStartRef.current;
+      const startY = Number((e.currentTarget as HTMLElement).dataset.touchStartY || '0');
+      const deltaY = e.clientY - startY;
+
+      if (Math.abs(deltaX) < 10 && touchStartTimeRef.current !== null) {
+        if (Math.abs(deltaY) > Math.abs(deltaX)) {
+          return;
+        }
+      }
+    },
+    []
+  );
+
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      if (touchStartRef.current === null) return;
+
+      const deltaX = e.clientX - touchStartRef.current;
+      const deltaTime = Date.now() - (touchStartTimeRef.current || 0);
+      const threshold = 50;
+
+      if (Math.abs(deltaX) >= threshold && deltaTime < 500) {
+        if (deltaX < 0) {
+          handleNext();
+        } else {
+          handlePrevious();
+        }
+        resetTimer();
+      }
+
+      touchStartRef.current = null;
+      touchStartTimeRef.current = null;
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    },
+    [handlePrevious, handleNext, resetTimer]
+  );
+
+  const handlePointerCancel = useCallback(
+    (e: React.PointerEvent) => {
+      touchStartRef.current = null;
+      touchStartTimeRef.current = null;
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    },
+    []
+  );
 
   const currentImage = images[currentIndex];
 
   return (
-    <div className="carousel" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+    <div
+      className="carousel"
+      tabIndex={0}
+      role="region"
+      aria-label="Image carousel"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onKeyDown={handleKeyDown}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+      data-touch-start-y="0"
+      onPointerDownCapture={(e) => {
+        (e.currentTarget as HTMLElement).dataset.touchStartY = e.clientY.toString();
+      }}
+    >
       <div className="carousel__viewport">
         <div
           className="carousel__track"
@@ -84,7 +176,7 @@ export function ImageCarousel({ images }: ImageCarouselProps) {
         className="carousel__button carousel__button--prev"
         onClick={() => {
           handlePrevious();
-          handleControlClick();
+          resetTimer();
         }}
         aria-label="Previous slide"
       >
@@ -98,7 +190,7 @@ export function ImageCarousel({ images }: ImageCarouselProps) {
         className="carousel__button carousel__button--next"
         onClick={() => {
           handleNext();
-          handleControlClick();
+          resetTimer();
         }}
         aria-label="Next slide"
       >
@@ -115,7 +207,7 @@ export function ImageCarousel({ images }: ImageCarouselProps) {
             className={`carousel__dot ${index === currentIndex ? 'carousel__dot--active' : ''}`}
             onClick={() => {
               handleDotClick(index);
-              handleControlClick();
+              resetTimer();
             }}
             role="tab"
             aria-selected={index === currentIndex}
